@@ -1,7 +1,7 @@
 package chapter1
 
 
-object Chapter1 extends App {
+object Chapter1 {
 
   case class Player(name: String, score: Int)
 
