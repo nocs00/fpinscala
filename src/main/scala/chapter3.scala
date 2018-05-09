@@ -162,6 +162,82 @@ package chapter3 {
 
   }
 
+  sealed trait Tree[+A]
+
+  case object EmptyNode extends Tree[Nothing]
+
+  case class Leaf[A](value: A) extends Tree[A]
+
+  case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
+
+  object Tree {
+    def size[A](tree: Tree[A]): Int = {
+      def go(tree: Tree[A], acc: Int): Int = {
+        tree match {
+          case EmptyNode => acc
+          case Leaf(value) => acc + 1
+          case Branch(l, r) => go(l, 0) + go(r, 0) + acc
+        }
+      }
+
+      go(tree, 0)
+    }
+
+    def maximum(t: Tree[Int]): Option[Int] = t match {
+      case EmptyNode => None
+      case Leaf(value) => Some(value)
+      case Branch(l, r) =>
+        val lv = maximum(l)
+        val rv = maximum(r)
+        if (lv.isEmpty) rv
+        else if (rv.isEmpty) lv
+        else lv.flatMap(lvm => rv.map(rvm => lvm max rvm))
+    }
+
+    def depth[A](t: Tree[A]): Int = {
+      def go(t: Tree[A], acc: Int): Int = t match {
+        case EmptyNode => acc
+        case Leaf(_) => acc
+        case Branch(l, r) => acc + 1 + (go(l, 0) max go(r, 0))
+      }
+
+      go(t, 0)
+    }
+
+    def map[A](t: Tree[A])(f: A => A): Tree[A] = t match {
+      case EmptyNode => EmptyNode
+      case Leaf(value) => Leaf(f(value))
+      case Branch(l, r) => Branch(map(l)(f), map(r)(f))
+    }
+
+    def fold[A, B](t: Tree[A], z: B)(f: (Tree.type, Option[A], B) => B): B = t match {
+      case EmptyNode => z
+      case Leaf(value) => f(Leaf, Some(value), z)
+      case Branch(l, r) =>
+        val res1 = f(Branch, None, z)
+        val res2 = fold(l, res1)(f)
+        val res3 = fold(r, res2)(f)
+        res3
+    }
+
+    def size2[A](tree: Tree[A]): Int = fold(tree, 0)((tp, v, acc) => tp match {
+      case Leaf.getClass => acc+1
+      case _ => acc
+    })
+
+    //todo: fix branch case
+    def maximum2(t: Tree[Int]): Option[Int] = fold(t, None:Option[Int])((tp, v, acc) => tp match {
+      case EmptyNode.getClass => acc
+      case Leaf.getClass => v.map(vm => acc.map(am => vm max am).getOrElse(vm))
+      case Branch.getClass => acc
+    })
+
+    //todo: is it real to implement via fold?
+//    def depth2[A](t: Tree[A]): Int = fold(t, 0)((v,acc) => acc + 1)
+
+//    def map2[A](t: Tree[A])(f: A => A): Tree[A] = fold(t, null: Tree[A])((v, acc) =>  )
+  }
+
   object Runner {
 
     import chapter3.List._
@@ -217,6 +293,31 @@ package chapter3 {
       println(hasSubsequence(List(1, 2, 3, 4, 5), List(2, 4))) //false
       println(hasSubsequence(List(1, 2, 3, 4, 5), Nil)) //true
       println(hasSubsequence(Nil, List(2, 3))) //false
+
+      val tree1: Tree[Int] =
+        Branch(
+          Branch(
+            Leaf(3),
+            Branch(
+              Leaf(2),
+              Leaf(18)
+            )
+          ),
+          Branch(
+            Leaf(1),
+            Leaf(7)
+          )
+        )
+      println(Tree.size(tree1))
+      println(Tree.maximum(tree1))
+      println(Tree.depth(tree1))
+      println(Tree.map(tree1)(value => 0))
+
+      println(Tree.fold(tree1, 0)((el, acc) => acc + el))
+      println(Tree.size2(tree1))
+      println(Tree.maximum2(tree1))
+//      println(Tree.depth2(tree1))
+      println(Tree.map2(tree1)(value => 0))
     }
   }
 
