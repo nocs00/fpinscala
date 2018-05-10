@@ -210,27 +210,28 @@ package chapter3 {
       case Branch(l, r) => Branch(map(l)(f), map(r)(f))
     }
 
-    def fold[A, B](t: Tree[A], z: B)(f: (Tree.type, Option[A], B) => B): B = t match {
+    //todo: think how to write fold for this tree so it is possible to implement size, max, depth and map via it
+    def fold[A, B](t: Tree[A], z: B)(f: (Option[A], B) => B): B = t match {
       case EmptyNode => z
-      case Leaf(value) => f(Leaf, Some(value), z)
+      case Leaf(value) => f(Some(value), z)
       case Branch(l, r) =>
-        val res1 = f(Branch, None, z)
+        val res1 = f(None, z)
         val res2 = fold(l, res1)(f)
         val res3 = fold(r, res2)(f)
         res3
     }
-
-    def size2[A](tree: Tree[A]): Int = fold(tree, 0)((tp, v, acc) => tp match {
-      case Leaf.getClass => acc+1
-      case _ => acc
-    })
-
-    //todo: fix branch case
-    def maximum2(t: Tree[Int]): Option[Int] = fold(t, None:Option[Int])((tp, v, acc) => tp match {
-      case EmptyNode.getClass => acc
-      case Leaf.getClass => v.map(vm => acc.map(am => vm max am).getOrElse(vm))
-      case Branch.getClass => acc
-    })
+//
+//    def size2[A](tree: Tree[A]): Int = fold(tree, 0)((tp, v, acc) => tp match {
+//      case Leaf.getClass => acc+1
+//      case _ => acc
+//    })
+//
+//    //todo: fix branch case
+//    def maximum2(t: Tree[Int]): Option[Int] = fold(t, None:Option[Int])((tp, v, acc) => tp match {
+//      case EmptyNode.getClass => acc
+//      case Leaf.getClass => v.map(vm => acc.map(am => vm max am).getOrElse(vm))
+//      case Branch.getClass => acc
+//    })
 
     //todo: is it real to implement via fold?
 //    def depth2[A](t: Tree[A]): Int = fold(t, 0)((v,acc) => acc + 1)
@@ -313,11 +314,11 @@ package chapter3 {
       println(Tree.depth(tree1))
       println(Tree.map(tree1)(value => 0))
 
-      println(Tree.fold(tree1, 0)((el, acc) => acc + el))
-      println(Tree.size2(tree1))
-      println(Tree.maximum2(tree1))
+//      println(Tree.fold(tree1, 0)((el, acc) => acc + el))
+//      println(Tree.size2(tree1))
+//      println(Tree.maximum2(tree1))
 //      println(Tree.depth2(tree1))
-      println(Tree.map2(tree1)(value => 0))
+//      println(Tree.map2(tree1)(value => 0))
     }
   }
 
