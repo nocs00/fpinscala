@@ -4,7 +4,7 @@ import org.scalatest.{MustMatchers, WordSpec}
 import chapter4.FunctionsWithOptions._
 
 class Chapter4Spec extends WordSpec with MustMatchers {
-  "Chaptser4" should {
+  "Chapter4" should {
 
     "isDefined: None->false; Some->true" in {
       var option: Option[Int] = None
