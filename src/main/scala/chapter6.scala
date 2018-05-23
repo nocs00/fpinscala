@@ -150,26 +150,20 @@ package chapter6 {
   }
 
   //generalizing RNG as immutable State transitions
-  //todo: state probably option?
-  case class State[S, +A](run: S => (A, S), var state: S) {
+  case class StateTransition[S, +A](run: S => (A, S)) {
 
-    def run2: A = {
-      val (a, s) = run(state)
-      state = s
-      a
-    }
-
-    def flatMap[B](g: A => State[S, B]): State[S, B] = new State[S, B](
+    def flatMap[B](g: A => StateTransition[S, B]): StateTransition[S, B] = new StateTransition[S, B](
       s => {
         val (a, s2) = this.run(s)
         g(a).run(s2)
-      }, state)
+      })
 
-    def map[B](f: A => B): State[S, B] =
+    def map[B](f: A => B): StateTransition[S, B] =
       flatMap(
-        a => new State[S, B]((f(a), _), state)
+        a => new StateTransition[S, B]((f(a), _))
       )
 
+    /*
     def get: S = state
 
     def set(newState: S): Unit = this.state = newState
@@ -184,28 +178,29 @@ package chapter6 {
       _ <- set(f(s))
     } yield ()
 
+*/
   }
 
-  object State {
-    def map2[S, A, B, C](sa: State[S, A], sb: State[S, B])(f: (A, B) => C): State[S, C] = sa.flatMap(a => {
+  object StateTransition {
+    def map2[S, A, B, C](sa: StateTransition[S, A], sb: StateTransition[S, B])(f: (A, B) => C): StateTransition[S, C] = sa.flatMap(a => {
       sb.flatMap(b => {
-        new State[S, C]((f(a, b), _),
-          sa.state) //fixme: what of 2 states sa,sb choose then?
+        new StateTransition[S, C]((f(a, b), _))
       })
     })
 
-//    def unit[S, A](a: A): State[S, A] = new State[S, A]((a, _))
+    def unit[S, A](a: A): StateTransition[S, A] = new StateTransition[S, A]((a, _))
 
-    def sequence[S, A](fs: List[State[S, A]]): State[S, List[A]] = fs match {
+    def sequence[S, A](fs: List[StateTransition[S, A]]): StateTransition[S, List[A]] = fs match {
       case Nil => throw new IllegalArgumentException("empty transformations list is not allowed")
       case h :: h1 :: Nil => map2(h, h1)((a, b) => List(a, b))
       case h :: Nil => h.map(a => List(a))
       case h :: h1 :: t =>
-        val transformation: State[S, List[A]] = map2(h, h1)((a, b) => List(a, b))
+        val transformation: StateTransition[S, List[A]] = map2(h, h1)((a, b) => List(a, b))
         map2(transformation, sequence(t))((a, b) => a ::: b)
     }
   }
 
+  /* todo: postpone
   object CandyMachineSimulation {
 
     sealed trait Input
@@ -216,8 +211,9 @@ package chapter6 {
 
     case class Machine(locked: Boolean, candies: Int, coins: Int)
 
-    def simulateMachine(inputs: List[Input]): State[Machine, Int] = null
+    def simulateMachine(inputs: List[Input]): StateTransition[Machine, Int] = null
 
   }
+  */
 
 }
