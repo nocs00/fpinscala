@@ -1,5 +1,6 @@
 package chapter6
 
+import chapter6.RNG.Rand
 import org.scalatest.{MustMatchers, WordSpec}
 
 class Chapter6Spec extends WordSpec with MustMatchers {
@@ -45,7 +46,7 @@ class Chapter6Spec extends WordSpec with MustMatchers {
 
       "ints" in {
         val rng = RNG.simple(12345L)
-        val (ints, rng2) = RNG.ints(100)(rng)
+        val (ints, rng2) = RNG.ints(100).run(rng)
 
         ints.size mustBe 100
         ints.toSet.size mustBe 100
@@ -54,14 +55,14 @@ class Chapter6Spec extends WordSpec with MustMatchers {
       "positiveMax" in {
         val rng = RNG.simple(12345L)
         val rand = RNG.positiveMax(5)
-        val (t1, t2) = rand(rng)
+        val (t1, t2) = rand.run(rng)
         println(t1, t2)
       }
 
       "sequence of transformations" in {
         val rng = RNG.simple(12345L)
         val rand = RNG.sequence(List(RNG.positiveMax(100), RNG.positiveMax(2), RNG.double_2_Rand))
-        val result = rand(rng)._1
+        val result = rand.run(rng)._1
 
         result.size mustBe 3
         assert(result(0).asInstanceOf[Int] >= 0 && result(0).asInstanceOf[Int] <= 100)
@@ -96,42 +97,41 @@ class Chapter6Spec extends WordSpec with MustMatchers {
       "flatMap: map_2, map2_2" in {
         val rng = RNG.simple(12345L)
 
-        val rand = RNG.map_2(_.nextInt)(_.toString)
-        rand(rng)._1 mustBe "454757875"
+        val rand = RNG.map_2(RNG.nextInt_Rand)(_.toString)
+        rand.run(rng)._1 mustBe "454757875"
 
-        RNG.map2_2(_.nextInt, RNG.double_2_Rand)((a, b) => s"$a:$b")(rng)._1 mustBe "454757875:0.4034805881807024"
+        RNG.map2_2(RNG.nextInt_Rand, RNG.double_2_Rand)((a, b) => s"$a:$b").run(rng)._1 mustBe "454757875:0.4034805881807024"
       }
 
-//      "state" in {
-//        val rngAction = new StateTransition[RNG, Int](_.nextInt, RNG.simple(12345L))
-//        val int = rngAction.run2
-//
-//        rngAction.set(RNG.simple(54321L))
-//        val i = rngAction.run2
-//        assert(i >= 0)
-//      }
+      "maps-flatMaps with state" in {
+        val rng = RNG.simple(12345L)
 
-      //todo: how to make it work? also books example seems incorrect as methods return tuples not direct values:
-      /*
+        val genList_rand: Rand[List[Int]] =
+          RNG.positiveMax(20).flatMap(x =>
+            RNG.int.flatMap(y =>
+              RNG.ints(x).map(xs =>
+                xs.map(_ % y))))
 
-      for {
-         x <- int
-         y <- int
-         xs <- ints(x)
-        } yield xs.map(_ % y)
+        val (list, newRng) = genList_rand.run(rng)
+        assert(list.size <= 20)
+        assert(list.toSet.size == list.size)
+      }
 
-       */
+      "maps-flatMaps with for-construct" in {
+        import chapter6.RNG._
 
-      //      "states with for" in {
-      //        val state = new State[RNG, Int](RNG.int)
-      //        val rng = RNG.simple(12345L)
-      //
-      //        for {
-      //          (x, r1) <- state.run(rng)
-      //          (y, r2) <- state.run(r1)
-      //          (xs, r3) <- state.set(RNG.ints(x)).run(r2)
-      //        } yield xs.map(_ % y)
-      //      }
+        val genList =
+          for {
+            x <- positiveMax(20)
+            y <- int
+            xs <- ints(x)
+          } yield xs.map(_ % y)
+
+        val rng = RNG.simple(12345L)
+        val (list, newRng) = genList.run(rng)
+        assert(list.size <= 20)
+        assert(list.toSet.size == list.size)
+      }
     }
   }
 }

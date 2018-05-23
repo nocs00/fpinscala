@@ -30,6 +30,10 @@ package chapter6 {
       ((i1, i2), rng3)
     }
 
+    def positiveInt_Rand: Rand[Int] = new Rand(
+      rng => positiveInt(rng)
+    )
+
     def positiveInt(rng: RNG): (Int, RNG) = {
       val (i, newRng) = rng.nextInt
       if (i == Int.MinValue) (0, newRng)
@@ -61,7 +65,7 @@ package chapter6 {
       ((d1, d2, d3), rng3)
     }
 
-    def ints(count: Int)(rng: RNG): (List[Int], RNG) = {
+    def ints(count: Int): Rand[List[Int]] = new Rand(rng => {
       var list: List[Int] = List()
       if (count <= 0) (list, rng)
       else {
@@ -73,48 +77,49 @@ package chapter6 {
         }
         (list, newRng)
       }
-
-    }
+    })
 
     //------------
 
-    type State[S,+A] = S => (A,S)
-    type Rand[+A] = State[RNG, A]
+    type Rand[+A] = StateTransition[RNG, A]
 
-    val int: Rand[Int] = _.nextInt
+    val int: Rand[Int] = new Rand(_.nextInt)
 
-    def unit[A](a: A): Rand[A] = rng => (a, rng)
+    def unit[A](a: A): Rand[A] = new Rand(rng => (a, rng))
 
-    def map[A, B](s: Rand[A])(f: A => B): Rand[B] =
+    def map[A, B](s: Rand[A])(f: A => B): Rand[B] = new Rand(
       rng => {
-        val (a, rng2) = s(rng)
+        val (a, rng2) = s.run(rng)
         (f(a), rng2)
-      }
+      })
 
     def positiveMax(n: Int): Rand[Int] =
       if (n < 0)
-        (0, _)
+        new Rand((0, _))
       else
-        map(positiveInt)(i => i % n)
+        map(positiveInt_Rand)(i => i % n)
 
     def double_2_Rand: Rand[Double] =
-      map(positiveInt)(_.toDouble / Int.MaxValue)
+      map(positiveInt_Rand)(_.toDouble / Int.MaxValue)
 
     def double_2(rng: RNG): (Double, RNG) =
-      double_2_Rand(rng)
+      double_2_Rand.run(rng)
 
-    def map2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    def map2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = new Rand(
       rng => {
-        val (a, rng2) = ra(rng)
-        val (b, rng3) = rb(rng2)
+        val (a, rng2) = ra.run(rng)
+        val (b, rng3) = rb.run(rng2)
         (f(a, b), rng3)
-      }
+      })
 
     def intDouble_2(rng: RNG): ((Int, Double), RNG) =
-      map2(_.nextInt, double)((_, _))(rng)
+      map2(nextInt_Rand, double_2_Rand)((_, _)).run(rng)
+
+    def nextInt_Rand: Rand[Int] =
+      new Rand(_.nextInt)
 
     def doubleInt_2(rng: RNG): ((Double, Int), RNG) =
-      map2(double, _.nextInt)((_, _))(rng)
+      map2(double_2_Rand, nextInt_Rand)((_, _)).run(rng)
 
     def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = fs match {
       case Nil => throw new IllegalArgumentException("empty transformations list is not allowed")
@@ -125,27 +130,27 @@ package chapter6 {
         map2(transformation, sequence(t))((a, b) => a ::: b)
     }
 
-    def ints_2(count: Int)(rng: RNG): (List[Int], RNG) = sequence(List.fill(count)(_.nextInt): List[Rand[Int]])(rng)
+    def ints_2(count: Int)(rng: RNG): (List[Int], RNG) = sequence(List.fill(count)(nextInt_Rand): List[Rand[Int]]).run(rng)
 
-    def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] =
+    def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] = new Rand(
       rng => {
-        val (a, rng2) = f(rng)
-        g(a)(rng2)
-      }
+        val (a, rng2) = f.run(rng)
+        g(a).run(rng2)
+      })
 
     def positiveInt_2(rng: RNG): (Int, RNG) =
       flatMap(int)(
         i =>
-          if (i == Int.MinValue) (0, _)
-          else (i.abs, _)
-      )(rng)
+          if (i == Int.MinValue) new Rand((0, _))
+          else new Rand((i.abs, _))
+      ).run(rng)
 
     def map_2[A, B](s: Rand[A])(f: A => B): Rand[B] =
-      flatMap(s)(a => (f(a), _))
+      flatMap(s)(a => new Rand((f(a), _)))
 
     def map2_2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = flatMap(ra)(a => {
       flatMap(rb)(b => {
-        (f(a, b), _)
+        new Rand((f(a, b), _))
       })
     })
   }
@@ -160,9 +165,7 @@ package chapter6 {
       })
 
     def map[B](f: A => B): StateTransition[S, B] =
-      flatMap(
-        a => new StateTransition[S, B]((f(a), _))
-      )
+      flatMap(a => new StateTransition[S, B]((f(a), _)))
 
     /*
     def get: S = state
