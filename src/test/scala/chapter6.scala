@@ -102,14 +102,14 @@ class Chapter6Spec extends WordSpec with MustMatchers {
         RNG.map2_2(_.nextInt, RNG.double_2_Rand)((a, b) => s"$a:$b")(rng)._1 mustBe "454757875:0.4034805881807024"
       }
 
-      "state" in {
-        val rngAction = new State[RNG, Int](_.nextInt, RNG.simple(12345L))
-        val int = rngAction.run2
-
-        rngAction.set(RNG.simple(54321L))
-        val i = rngAction.run2
-        assert(i >= 0)
-      }
+//      "state" in {
+//        val rngAction = new StateTransition[RNG, Int](_.nextInt, RNG.simple(12345L))
+//        val int = rngAction.run2
+//
+//        rngAction.set(RNG.simple(54321L))
+//        val i = rngAction.run2
+//        assert(i >= 0)
+//      }
 
       //todo: how to make it work? also books example seems incorrect as methods return tuples not direct values:
       /*
