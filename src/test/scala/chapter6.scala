@@ -1,6 +1,6 @@
 package chapter6
 
-import chapter6.RNG.Rand
+import chapter6.RNG.{Rand, int, ints, positiveMax}
 import org.scalatest.{MustMatchers, WordSpec}
 
 class Chapter6Spec extends WordSpec with MustMatchers {
@@ -118,8 +118,6 @@ class Chapter6Spec extends WordSpec with MustMatchers {
       }
 
       "maps-flatMaps with for-construct" in {
-        import chapter6.RNG._
-
         val genList =
           for {
             x <- positiveMax(20)
@@ -132,6 +130,32 @@ class Chapter6Spec extends WordSpec with MustMatchers {
         assert(list.size <= 20)
         assert(list.toSet.size == list.size)
       }
+
+      "modify" in {
+        val genList =
+          for {
+            x <- positiveMax(20)
+            y <- int
+            xs <- ints(x)
+          } yield xs.map(_ % y)
+
+        val rng = RNG.simple(12345L)
+        val (list, newRng) = genList.run(rng)
+
+        val genList_ModifiedState = genList.modify(_ => seqFromRng(2))
+        val (list2, newRng2) = genList_ModifiedState.run(rng)
+
+        //seqFromRng: x = 2, y = 3, ints(2) = 4,5 ; so next is 6
+        newRng2.nextInt._1 mustBe 6
+      }
     }
+  }
+
+  def seqFromRng(returnValue: Int): RNG = new RNG {
+    def nextInt = (returnValue, seqFromRng(returnValue+1))
+  }
+
+  def constRng(returnValue: Int): RNG = new RNG {
+    def nextInt = (returnValue, constRng(returnValue))
   }
 }

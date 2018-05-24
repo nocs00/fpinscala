@@ -8,8 +8,6 @@ package chapter6 {
       val (i2, rng3) = rng2.nextInt
       ((i1, i2), rng3)
     }
-
-
   }
 
   object RNG {
@@ -167,22 +165,22 @@ package chapter6 {
     def map[B](f: A => B): StateTransition[S, B] =
       flatMap(a => new StateTransition[S, B]((f(a), _)))
 
-    /*
-    def get: S = state
+    //todo: dont understand how to implement this so modify is valid
+    //todo: for example what have to be signature of 'get' to return state is for-construct
+//    def get: Option[S] = None
+//
+//    def set(newState: S): StateTransition[S, A] = new StateTransition[S, A](_ => this.run(newState))
+//
+//    def modify(f: S => S): StateTransition[S, Unit] = for {
+//      s <- get
+//      _ <- set(f(s))
+//    } yield ()
 
-    def set(newState: S): Unit = this.state = newState
-
-    //fixme:
-    // Error:(177, 12) value flatMap is not a member of type parameter S
-    //      s <- get
-    // Error:(178, 15) value map is not a member of Unit
-    //      _ <- set(f(s))
-    def modify(f: S => S): State[S, Unit] = for {
-      s <- get
-      _ <- set(f(s))
-    } yield ()
-
-*/
+    //just workaround
+    def modify(f: S => S): StateTransition[S, Unit] = new StateTransition(s => {
+      val (a,ss) = run(f(s))
+      ((), ss)
+    })
   }
 
   object StateTransition {
