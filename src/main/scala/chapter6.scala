@@ -167,18 +167,18 @@ package chapter6 {
 
     //todo: dont understand how to implement this so modify is valid
     //todo: for example what have to be signature of 'get' to return state is for-construct
-//    def get: Option[S] = None
-//
-//    def set(newState: S): StateTransition[S, A] = new StateTransition[S, A](_ => this.run(newState))
-//
-//    def modify(f: S => S): StateTransition[S, Unit] = for {
-//      s <- get
-//      _ <- set(f(s))
-//    } yield ()
+    //    def get: Option[S] = None
+    //
+    //    def set(newState: S): StateTransition[S, A] = new StateTransition[S, A](_ => this.run(newState))
+    //
+    //    def modify(f: S => S): StateTransition[S, Unit] = for {
+    //      s <- get
+    //      _ <- set(f(s))
+    //    } yield ()
 
     //just workaround
     def modify(f: S => S): StateTransition[S, Unit] = new StateTransition(s => {
-      val (a,ss) = run(f(s))
+      val (a, ss) = run(f(s))
       ((), ss)
     })
   }
@@ -202,8 +202,14 @@ package chapter6 {
     }
   }
 
-  /* todo: postpone
+
+  //-------------candies here
+
   object CandyMachineSimulation {
+
+    type MachineAction = StateTransition[Machine, Int]
+
+    val noAction: MachineAction = new MachineAction(m => (m.coins, m))
 
     sealed trait Input
 
@@ -211,11 +217,32 @@ package chapter6 {
 
     case object Turn extends Input
 
-    case class Machine(locked: Boolean, candies: Int, coins: Int)
+    case class Machine(locked: Boolean, candies: Int, coins: Int) {
+      def ignoreInput: (Int, Machine) = (coins, this)
+    }
 
-    def simulateMachine(inputs: List[Input]): StateTransition[Machine, Int] = null
+    def simulateMachine(inputs: List[Input]): MachineAction = inputs match {
+      case Nil => noAction
+      case h :: Nil => processInput(h)
+      case h :: t => StateTransition.map2(processInput(h), simulateMachine(t))((_,b) => b)
+    }
 
+    def processInput(input: Input): MachineAction = new MachineAction(machine => {
+      if (machine.candies <= 0) machine.ignoreInput
+      else input match {
+        case Coin =>
+          if (machine.locked)
+            (machine.coins + 1, machine.copy(locked = false, coins = machine.coins + 1))
+          else
+            machine.ignoreInput
+
+        case Turn =>
+          if (machine.locked)
+            machine.ignoreInput
+          else
+            (machine.coins, machine.copy(locked = true, machine.candies - 1))
+      }
+    })
   }
-  */
 
 }

@@ -1,5 +1,6 @@
 package chapter6
 
+import chapter6.CandyMachineSimulation.{Coin, Machine, Turn, simulateMachine}
 import chapter6.RNG.{Rand, int, ints, positiveMax}
 import org.scalatest.{MustMatchers, WordSpec}
 
@@ -102,7 +103,9 @@ class Chapter6Spec extends WordSpec with MustMatchers {
 
         RNG.map2_2(RNG.nextInt_Rand, RNG.double_2_Rand)((a, b) => s"$a:$b").run(rng)._1 mustBe "454757875:0.4034805881807024"
       }
+    }
 
+    "StateTransition" should {
       "maps-flatMaps with state" in {
         val rng = RNG.simple(12345L)
 
@@ -147,6 +150,75 @@ class Chapter6Spec extends WordSpec with MustMatchers {
 
         //seqFromRng: x = 2, y = 3, ints(2) = 4,5 ; so next is 6
         newRng2.nextInt._1 mustBe 6
+      }
+    }
+
+    "CandyMachine" should {
+      "normal flow: insert coin and dispense candy 2 times => +2 coins, -2 candies" in {
+        val simulation = simulateMachine(List(Coin, Turn, Coin, Turn))
+        val machine: Machine = Machine(locked = true, candies = 10, coins = 10)
+
+        val (coins, machine2) = simulation.run(machine)
+        coins mustBe 12
+        machine2 mustBe Machine(true, 8, 12)
+      }
+
+      "inputs when out of candies: total ignore, machines are not changed" in {
+        val simulation = simulateMachine(List(Turn, Coin, Turn, Turn, Coin, Coin))
+        val machine1: Machine = Machine(locked = true, candies = 0, coins = 0)
+        val machine2: Machine = Machine(locked = false, candies = 0, coins = 10)
+
+        val (coins1, newMachine1) = simulation.run(machine1)
+        val (coins2, newMachine2) = simulation.run(machine2)
+
+        coins1 mustBe 0
+        coins2 mustBe 10
+        newMachine1 mustBe machine1
+        newMachine2 mustBe machine2
+      }
+
+      "insert a coin into a locked machine: unlock, +1 coin" in {
+        val simulation = simulateMachine(List(Coin))
+        val machine: Machine = Machine(locked = true, candies = 1, coins = 0)
+
+        val (coins, newMachine) = simulation.run(machine)
+        coins mustBe 1
+        newMachine mustBe Machine(false, 1, 1)
+      }
+
+      "insert a coin into a unlocked machine: ignore" in {
+        val simulation = simulateMachine(List(Coin))
+        val machine: Machine = Machine(locked = false, candies = 1, coins = 0)
+
+        val (coins, newMachine) = simulation.run(machine)
+        coins mustBe 0
+        newMachine mustBe machine
+      }
+
+      "turn on an locked machine: ignore" in {
+        val simulation = simulateMachine(List(Turn))
+        val machine: Machine = Machine(locked = true, candies = 1, coins = 0)
+
+        val (coins, newMachine) = simulation.run(machine)
+        coins mustBe 0
+        newMachine mustBe machine
+      }
+
+      "turn on an unlocked machine: locked, -1 candy" in {
+        val simulation = simulateMachine(List(Turn))
+        val machine: Machine = Machine(locked = false, candies = 1, coins = 0)
+
+        val (coins, newMachine) = simulation.run(machine)
+        coins mustBe 0
+        newMachine mustBe Machine(true, 0, 0)
+      }
+
+      "no inputs: ignore" in {
+        val simulation = simulateMachine(List())
+        val machine1: Machine = Machine(locked = true, candies = 1, coins = 1)
+        val (coins1, newMachine1) = simulation.run(machine1)
+        coins1 mustBe 1
+        newMachine1 mustBe machine1
       }
     }
   }
